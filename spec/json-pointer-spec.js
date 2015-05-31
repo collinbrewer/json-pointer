@@ -1,86 +1,92 @@
-("group" in console) || (console.group=(console.groupEnd=console.log));
+var should=require("chai").should();
+var JSONPointer=require("../index.js");
 
-var MochiComparators={
-   "==" : "equal to",
-   "===" : "exactly equal to",
-   "!=" : "not equal to",
-   "!==" : "exactly not equal to",
-   ">" : "greater than",
-   ">=" : "greater than or equal",
-   "<" : "less than",
-   "<=" : "less than or equal ",
-   "in" : "in"
+// tests built from examples provided at: http://tools.ietf.org/html/rfc6901
+var doc={
+   "foo": ["bar", "baz"],
+   "": 0,
+   "a/b": 1,
+   "c%d": 2,
+   "e^f": 3,
+   "g|h": 4,
+   "i\\j": 5,
+   "k\"l": 6,
+   " ": 7,
+   "m~n": 8,
+   "asdf": {"qwer":"poiu"}
 };
 
-function mochi(title, a, comparator, b)
-{
-   /* jshint evil:true */
-   if(arguments.length===1)
-   {
-      it(title);
-   }
-   else
-   {
-      if(typeof(a)==="function")
-      {
-         it(title + ": function return should " + MochiComparators[comparator] + " " + b, function(){ a=a(); eval("if(!(a " + comparator + " b)) throw new Error(a + ' is not ' + MochiComparators[comparator] + ' ' + b);"); });
-      }
-      else
-      {
-         it(title + ": " + a + " should be " + MochiComparators[comparator] + " " + b, function(){ eval("if(!(a " + comparator + " b)) throw new Error(a + ' is not ' + MochiComparators[comparator] + ' ' + b);"); });
-      }
-   }
-}
+describe("JSONPointer", function(){
 
-var JSONPointer=require("../jsonpointer.js");
+   context("#evaluate", function(){
 
-describe("JSON Pointer", function(){
+      it("returns the root document", function(){
+         JSONPointer.evaluate("", doc).should.equal(doc);           // ""           // the whole document
+      });
 
-   // tests built from examples provided at: http://tools.ietf.org/html/rfc6901
-   var doc={
-      "foo": ["bar", "baz"],
-      "": 0,
-      "a/b": 1,
-      "c%d": 2,
-      "e^f": 3,
-      "g|h": 4,
-      "i\\j": 5,
-      "k\"l": 6,
-      " ": 7,
-      "m~n": 8,
-      "asdf": {"qwer":"poiu"}
-   };
+      it("returns the value at /foo", function(){
+         JSONPointer.evaluate("/foo", doc).should.equal(doc.foo);   // "/foo"       ["bar", "baz"]
+      });
 
-   describe("#evaluate", function(){
+      it("returns the value at /foo/0", function(){
+         JSONPointer.evaluate("/foo/0", doc).should.equal("bar"); //  "/foo/0"     "bar"
+      });
 
-      // mochi("''", JSONPointer.evaluate("''", doc), "===", doc);           // ""           // the whole document
-      // mochi("/foo", JSONPointer.evaluate("/foo", doc), "===", doc.foo);   // "/foo"       ["bar", "baz"]
-      // mochi("/foo/0", JSONPointer.evaluate("/foo/0", doc), "===", "bar"); //  "/foo/0"     "bar"
-      // mochi("/", JSONPointer.evaluate("/", doc), "===", 0);               //  "/"          0
-      // mochi("/a~1b", JSONPointer.evaluate("/a~1b", doc), "===", 1);       //  "/a~1b"      1
-      // mochi("/c%d", JSONPointer.evaluate("/c%d", doc), "===", 2);         //  "/c%d"       2
-      // mochi("/e^f", JSONPointer.evaluate("/e^f", doc), "===", 3);         //  "/e^f"       3
-      // mochi("/g|h", JSONPointer.evaluate("/g|h", doc), "===", 4);         //  "/g|h"       4
-      // mochi("/i\\j", JSONPointer.evaluate("/i\\j", doc), "===", 5);       //  "/i\\j"      5
-      // mochi("/k\"l", JSONPointer.evaluate("/k\"l", doc), "===", 6);       //  "/k\"l"      6
-      // mochi("/ ", JSONPointer.evaluate("/ ", doc), "===", 7);             //  "/ "         7
-      // mochi("/m~0n", JSONPointer.evaluate("/m~0n", doc), "===", 8);       //  "/m~0n"      8
+      it("returns the value at /", function(){
+         JSONPointer.evaluate("/", doc).should.equal(0);               //  "/"          0
+      });
 
-      mochi("''", JSONPointer.evaluate.bind(null, "", doc), "===", doc);           // ""           // the whole document
-      mochi("/foo", JSONPointer.evaluate.bind(null, "/foo", doc), "===", doc.foo);   // "/foo"       ["bar", "baz"]
-      mochi("/foo/0", JSONPointer.evaluate.bind(null, "/foo/0", doc), "===", "bar"); //  "/foo/0"     "bar"
-      mochi("/", JSONPointer.evaluate.bind(null, "/", doc), "===", 0);               //  "/"          0
-      mochi("/a~1b", JSONPointer.evaluate.bind(null, "/a~1b", doc), "===", 1);       //  "/a~1b"      1
-      mochi("/c%d", JSONPointer.evaluate.bind(null, "/c%d", doc), "===", 2);         //  "/c%d"       2
-      mochi("/e^f", JSONPointer.evaluate.bind(null, "/e^f", doc), "===", 3);         //  "/e^f"       3
-      mochi("/g|h", JSONPointer.evaluate.bind(null, "/g|h", doc), "===", 4);         //  "/g|h"       4
-      mochi("/i\\j", JSONPointer.evaluate.bind(null, "/i\\j", doc), "===", 5);       //  "/i\\j"      5
-      mochi("/k\"l", JSONPointer.evaluate.bind(null, "/k\"l", doc), "===", 6);       //  "/k\"l"      6
-      mochi("/ ", JSONPointer.evaluate.bind(null, "/ ", doc), "===", 7);             //  "/ "         7
-      mochi("/m~0n", JSONPointer.evaluate.bind(null, "/m~0n", doc), "===", 8);       //  "/m~0n"      8
-      mochi("/asdf/qwer", JSONPointer.evaluate.bind(null, "/asdf/qwer", doc), "===", "poiu");  //  "/asdf/qwer" "poiu"
+      it("returns the value at /a~1b", function(){
+         JSONPointer.evaluate("/a~1b", doc).should.equal(1);       //  "/a~1b"      1
+      });
+
+      it("returns the value at /c%d", function(){
+         JSONPointer.evaluate("/c%d", doc).should.equal(2);         //  "/c%d"       2
+      });
+
+      it("returns the /e^f", function(){
+         JSONPointer.evaluate("/e^f", doc).should.equal(3);         //  "/e^f"       3
+      });
+
+      it("returns the /g|h", function(){
+         JSONPointer.evaluate("/g|h", doc).should.equal(4);         //  "/g|h"       4
+      });
+
+      it("returns the /i\\j", function(){
+         JSONPointer.evaluate("/i\\j", doc).should.equal(5);       //  "/i\\j"      5
+      });
+
+      it("returns the value at /k\"l ", function(){
+         JSONPointer.evaluate("/k\"l", doc).should.equal(6);       //  "/k\"l"      6
+      });
+
+      it("returns the value at / ", function(){
+         JSONPointer.evaluate("/ ", doc).should.equal(7);             //  "/ "         7
+      });
+
+      it("returns the value at /m~0n", function(){
+         JSONPointer.evaluate("/m~0n", doc).should.equal(8);       //  "/m~0n"      8
+      });
+
+      it("returns a value referenced by a pointer in dot notation", function(){
+         JSONPointer.evaluate("asdf.qwer", doc, {delimiter:"."}).should.equal("poiu");
+      });
    });
 
-});
+   context("#Factory", function(){
 
-// window.mochaPhantomJS ? mochaPhantomJS.run() : mocha.run();
+      var DotPointer;
+
+      beforeEach(function(){
+         DotPointer=JSONPointer.Factory({"delimiter":"."});
+      });
+
+      it("returns the root", function(){
+         DotPointer.evaluate("", doc).should.equal(doc);
+      });
+
+      it("returns the value of asdf.qwer", function(){
+         DotPointer.evaluate("asdf.qwer", doc).should.equal("poiu");
+      });
+   });
+});

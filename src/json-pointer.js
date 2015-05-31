@@ -1,156 +1,192 @@
 /**
- * jsonpointer.js
- * A javascript implementation of the RFC 6901 Spec: http://tools.ietf.org/html/rfc6901
- */
-var JSONPointer={};
+* jsonpointer.js
+* A javascript implementation of the RFC 6901 Spec: http://tools.ietf.org/html/rfc6901
+*/
 
-JSONPointer._isArray=Array.isArray || function(obj) {
-   return Object.prototype.toString.call(obj) == '[object Array]';
-};
+(function(root){
 
-/**
- * Encodes the special characters of a given component according
- * to the RFC 6901 Specification: http://tools.ietf.org/html/rfc6901#section-3
- * @param {String} component The component to encode
- * @return {String} The encoded component
- */
-JSONPointer.escapeComponent=function(component){
-   return component.replace(/~(?![0])/g, "~0").replace(/~(?![1])/, "~1");
-};
+   var isArray=Array.isArray || function(obj){
+      return Object.prototype.toString.call(obj) == '[object Array]';
+   };
 
-/**
- * Decodes the special characters of a given component according
- * to the RFC 6901 Specification: http://tools.ietf.org/html/rfc6901#section-3
- * @param {String} component The component to decode
- * @return {String} The decoded component
- */
-JSONPointer.unescapeComponent=function(component){
-   return component.replace(/~1/g, "/").replace(/~0/g, "~");
-};
-
-/**
- * Evaluates a single component against the given object
- * @param {String} component The pointer component to evaluate
- * @param {Mixed} doc The document to evaluate the component against
- * @return {Mixed} The value resolved by evaluating the pointer against the given document
- */
-JSONPointer.evaluateComponent=function(component, doc){
-
-   var debug=false;
-
-   debug && console.group("evaluateComponent", arguments);
-
-   if(JSONPointer._isArray(doc))
+   function PointerFactory(config)
    {
-      debug && console.log("isArray");
+      var DELIMITER=config.delimiter || "/";
 
-      if(component==="-") // new or something
+      /**
+       * Encodes the special characters of a given component according
+       * to the RFC 6901 Specification: http://tools.ietf.org/html/rfc6901#section-3
+       * @param {String} component The component to encode
+       * @return {String} The encoded component
+       */
+      function escapeReferenceToken(component)
       {
-         console.warn("JSON Pointer component '-' is not yet supported");
+         return component.replace(/~(?![0])/g, "~0").replace(/~(?![1])/, "~1");
       }
-      else
-      {
-         var index=parseInt(component);
 
-         debug && console.log("   index: ", index);
+      /**
+       * Decodes the special characters of a given component according
+       * to the RFC 6901 Specification: http://tools.ietf.org/html/rfc6901#section-3
+       * @param {String} component The component to decode
+       * @return {String} The decoded component
+       */
+      function unescapeReferenceToken(component){
+         return component.replace(/~1/g, "/").replace(/~0/g, "~");
+      }
 
-         if(isNaN(index))
+      /**
+       * Evaluates a single component against the given object
+       * @param {String} component The pointer component to evaluate
+       * @param {Mixed} doc The document to evaluate the component against
+       * @return {Mixed} The value resolved by evaluating the pointer against the given document
+       */
+      function evaluateReferenceToken(component, doc){
+
+         var debug=false;
+
+         debug && console.group("evaluateReferenceToken", arguments);
+
+         if(isArray(doc))
          {
-            throw new Error("Invalid JSON Pointer syntax: " + component);
-         }
-         else
-         {
-            if(index>=0 && index<doc.length)
+            debug && console.log("isArray");
+
+            if(component==="-") // new or something
             {
-               doc=doc[index];
+               console.warn("JSON Pointer component '-' is not yet supported");
             }
             else
             {
-               throw new Error("JSON Pointer references nonexistent value");
+               var index=parseInt(component);
+
+               debug && console.log("   index: ", index);
+
+               if(isNaN(index))
+               {
+                  throw new Error("Invalid JSON Pointer syntax: " + component);
+               }
+               else
+               {
+                  if(index>=0 && index<doc.length)
+                  {
+                     doc=doc[index];
+                  }
+                  else
+                  {
+                     throw new Error("JSON Pointer '" + component + "' references nonexistent value");
+                  }
+               }
             }
-         }
-      }
-   }
-   else
-   {
-      debug && console.log("is not array");
-
-      if(component!=="") // special case... no key evaluates to original doc
-      {
-         component==="/" && (component="");
-
-         if(component in doc)
-         {
-            doc=doc[component];
          }
          else
          {
-            throw new Error("JSON Pointer references nonexistent value");
+            debug && console.log("is not array");
+
+            if(component!=="") // special case... no key evaluates to original doc
+            {
+               component==="/" && (component="");
+
+               if(component in doc)
+               {
+                  doc=doc[component];
+               }
+               else
+               {
+                  throw new Error("JSON Pointer '" + component + "' references nonexistent value");
+               }
+            }
          }
+
+         debug && console.groupEnd();
+
+         return doc;
       }
-   }
 
-   debug && console.groupEnd();
+      /**
+       * Evaluates a list of components against the given root object
+       * @param {Array} components The pointer component to evaluate
+       * @param {Mixed} doc The document to evaluate the component against
+       * @return {Mixed} The value resolved by evaluating the pointer against the given document
+       */
+      function evaluateReferenceTokens(components, doc){
 
-   return doc;
-};
+         var index=0;
+         var length=components.length;
 
-/**
- * Evaluates a list of components against the given root object
- * @param {Array} components The pointer component to evaluate
- * @param {Mixed} doc The document to evaluate the component against
- * @return {Mixed} The value resolved by evaluating the pointer against the given document
- */
-JSONPointer.evaluateComponents=function(components, doc){
+         if(length!==0)
+         {
+            while(index<length)
+            {
+               doc=evaluateReferenceToken(components[index], doc);
 
-   var index=0;
-   var length=components.length;
+               index++;
+            }
+         }
 
-   if(length!==0)
-   {
-      while(index<length)
+         return doc;
+      }
+
+      /**
+       * Builds a function that resolves the pointer for a given object
+       * @param {String} The pointer string
+       * @return {Function} A function that returns the evaluation of the given *string* against a given document root
+       */
+      function compile(pointer, config){
+
+         var fn;//=(JSONPointer.cache || (JSONPointer.cache={}))[string];
+         var delimiter=(config ? config.delimiter : null) || DELIMITER;
+
+         if(!fn)
+         {
+            // handles special case where string is just a "/"
+            var referenceTokens=(pointer===delimiter ? [delimiter] : pointer.split(delimiter).map(unescapeReferenceToken));
+
+            referenceTokens.length>0 && referenceTokens[0]==="" && referenceTokens.shift();
+
+            // fn=(JSONPointer.cache[string]=JSONPointer.evaluateReferenceTokens.bind(null, components));
+            fn=evaluateReferenceTokens.bind(null, referenceTokens);
+         }
+
+         return fn;
+      }
+
+      /**
+       * Evaluates the given document against the pointer according
+       * to the RFC 6901 Specification: http://tools.ietf.org/html/rfc6901#section-4
+       * @param {String} pointer The pointer string
+       * @param {Mixed} doc The root document to evaluate the pointer against
+       * @return {Mixed} The evaluation of the given *string* against a given document root
+       */
+      function evaluate(representation, doc, config){
+         return compile(representation, config)(doc);
+      }
+
+      /**
+       * @class Pointer
+       */
+      function Pointer(representation)
       {
-         doc=JSONPointer.evaluateComponent(components[index], doc);
-
-         index++;
+         this.representation=representation;
       }
+
+      Pointer.evaluate=evaluate;
+
+      Pointer.prototype.evaluate=function(doc){
+         return evaluate(this.representation, doc);
+      };
+
+      Pointer.Factory=PointerFactory;
+
+      return Pointer;
    }
 
-   return doc;
-};
+   var JSONPointer=PointerFactory({delimiter:"/"});
 
-/**
- * Builds a function that resolves the pointer for a given object
- * @param {String} The pointer string
- * @return {Function} A function that returns the evaluation of the given *string* against a given document root
- */
-JSONPointer.compile=function(string){
+   JSONPointer.Factory=PointerFactory;
 
-   var fn=(JSONPointer.cache || (JSONPointer.cache={}))[string];
+   // expose
+   (function(mod, name){
+      (typeof(module)!=="undefined" ? (module.exports=mod) : ((typeof(define)!=="undefined" && define.amd) ? define(function(){ return mod; }) : (window[name]=mod)));
+      root[name]=mod;
+   })(JSONPointer, "JSONPointer");
 
-   if(!fn)
-   {
-      var components=(string==="/" ? ["/"] : string.split("/").map(JSONPointer.unescapeComponent)); // handles special case where string is just a "/"
-
-      components.length>0 && components[0]==="" && components.shift();
-
-      // fn=(JSONPointer.cache[string]=JSONPointer.evaluateComponents.bind(null, components));
-      fn=JSONPointer.evaluateComponents.bind(null, components);
-   }
-
-   return fn;
-};
-
-/**
- * Evaluates the given document against the pointer according
- * to the RFC 6901 Specification: http://tools.ietf.org/html/rfc6901#section-4
- * @param {String} pointer The pointer string
- * @param {Mixed} doc The root document to evaluate the pointer against
- * @return {Mixed} The evaluation of the given *string* against a given document root
- */
-JSONPointer.evaluate=function(pointer, doc){
-   return JSONPointer.compile(pointer)(doc);
-};
-
-// Expose to AMD or window
-(typeof(module)!=="undefined" ? (module.exports=JSONPointer) : (window.JSONPointer=JSONPointer));
+})(this);
