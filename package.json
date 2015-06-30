@@ -1,0 +1,15 @@
+{
+  "name": "json-pointer",
+  "version": "0.0.1",
+  "description": "A utility for working with RFC 6901 pointers, and a bit more.",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha spec"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://collinbrewer@bitbucket.org/collinbrewer/json-pointer.git"
+  },
+  "author": "Collin Brewer <collin@brewer-collective.com>",
+  "license": "MIT"
+}
