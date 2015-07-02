@@ -73,6 +73,18 @@ describe("JSONPointer", function(){
       });
    });
 
+   context("Configs", function(){
+
+      var doc={};
+
+      it("should use a custom evaluator", function(){
+
+         var evaluateToken=function(){ return "hello"; };
+
+         JSONPointer.evaluate("it+does/not^matter", doc, {evaluateToken:evaluateToken}).should.equal("hello");
+      });
+   });
+
    context("#Factory", function(){
 
       var DotPointer;

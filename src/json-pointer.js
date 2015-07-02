@@ -107,7 +107,7 @@
        * @param {Mixed} doc The document to evaluate the component against
        * @return {Mixed} The value resolved by evaluating the pointer against the given document
        */
-      function evaluateReferenceTokens(components, doc){
+      function evaluateReferenceTokens(components, evaluateToken, doc){
 
          var index=0;
          var length=components.length;
@@ -116,7 +116,7 @@
          {
             while(index<length)
             {
-               doc=evaluateReferenceToken(components[index], doc);
+               doc=evaluateToken(components[index], doc);
 
                index++;
             }
@@ -132,18 +132,21 @@
        */
       function compile(pointer, config){
 
+         config || (config={});
+
          var fn;//=(JSONPointer.cache || (JSONPointer.cache={}))[string];
-         var delimiter=(config ? config.delimiter : null) || DELIMITER;
+         var delimiter=(config.delimiter || DELIMITER);
 
          if(!fn)
          {
             // handles special case where string is just a "/"
             var referenceTokens=(pointer===delimiter ? [delimiter] : pointer.split(delimiter).map(unescapeReferenceToken));
+            var evaluateToken=config.evaluateToken || evaluateReferenceToken;
 
             referenceTokens.length>0 && referenceTokens[0]==="" && referenceTokens.shift();
 
             // fn=(JSONPointer.cache[string]=JSONPointer.evaluateReferenceTokens.bind(null, components));
-            fn=evaluateReferenceTokens.bind(null, referenceTokens);
+            fn=evaluateReferenceTokens.bind(null, referenceTokens, evaluateToken);
          }
 
          return fn;
