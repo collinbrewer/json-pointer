@@ -1,6 +1,6 @@
 {
   "name": "json-pointer",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A utility for working with RFC 6901 pointers, and a bit more.",
   "main": "index.js",
   "scripts": {

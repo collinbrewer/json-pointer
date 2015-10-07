@@ -1,4 +1,6 @@
-var should=require("chai").should();
+var chai=require("chai");
+var should=chai.should();
+var expect=chai.expect;
 var JSONPointer=require("../index.js");
 
 // tests built from examples provided at: http://tools.ietf.org/html/rfc6901
@@ -70,6 +72,21 @@ describe("JSONPointer", function(){
 
       it("returns a value referenced by a pointer in dot notation", function(){
          JSONPointer.evaluate("asdf.qwer", doc, {delimiter:"."}).should.equal("poiu");
+      });
+
+      it("should throw a reference error", function(){
+         var fn=JSONPointer.evaluate.bind(null, "asdf.qwer", {});
+
+         expect(fn).to.throw(ReferenceError);
+      });
+
+      it("should not throw a reference error", function(){
+
+         expect(JSONPointer.evaluate("asdf.qwer", {}, {strict:false})).to.be.undefined;
+      });
+
+      it("should provide a default value", function(){
+         JSONPointer.evaluate("asdf.qwer", {}, {strict:false, defaultValue:"foo"}).should.equal("foo");
       });
    });
 

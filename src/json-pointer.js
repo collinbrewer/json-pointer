@@ -11,7 +11,10 @@
 
    function PointerFactory(config)
    {
+      config || (config={});
+
       var DELIMITER=config.delimiter || "/";
+      var strict=config.strict || true;
 
       /**
        * Encodes the special characters of a given component according
@@ -37,10 +40,11 @@
       /**
        * Evaluates a single component against the given object
        * @param {String} component The pointer component to evaluate
+       * @param {Boolean} strict Error should be thrown in case of a misisng reference
        * @param {Mixed} doc The document to evaluate the component against
        * @return {Mixed} The value resolved by evaluating the pointer against the given document
        */
-      function evaluateReferenceToken(component, doc){
+      function evaluateReferenceToken(component, config, doc){
 
          var debug=false;
 
@@ -72,7 +76,16 @@
                   }
                   else
                   {
-                     throw new Error("JSON Pointer '" + component + "' references nonexistent value");
+                     doc=config.defaultValue; // this will either be undefined or the defaultValue
+
+                     if(config.strict)
+                     {
+                        console.log("THROWING!");
+                        throw new ReferenceError("JSON Pointer '" + component + "' references nonexistent value");
+                     }
+                     else {
+                        console.log("NOT THROWING!");
+                     }
                   }
                }
             }
@@ -91,7 +104,16 @@
                }
                else
                {
-                  throw new Error("JSON Pointer '" + component + "' references nonexistent value");
+                  doc=config.defaultValue; // this will either be undefined or the defaultValue
+
+                  if(config.strict)
+                  {
+                     console.log("THROWING!");
+                     throw new ReferenceError("JSON Pointer '" + component + "' references nonexistent value");
+                  }
+                  else {
+                     console.log("NOT THROWING!");
+                  }
                }
             }
          }
@@ -107,16 +129,16 @@
        * @param {Mixed} doc The document to evaluate the component against
        * @return {Mixed} The value resolved by evaluating the pointer against the given document
        */
-      function evaluateReferenceTokens(components, evaluateToken, doc){
+      function evaluateReferenceTokens(components, evaluateToken, config, doc){
 
          var index=0;
          var length=components.length;
 
          if(length!==0)
          {
-            while(index<length)
+            while(doc && index<length)
             {
-               doc=evaluateToken(components[index], doc);
+               doc=evaluateToken(components[index], config, doc);
 
                index++;
             }
@@ -132,21 +154,21 @@
        */
       function compile(pointer, config){
 
-         config || (config={});
+         config || (config={strict:true});
 
          var fn;//=(JSONPointer.cache || (JSONPointer.cache={}))[string];
          var delimiter=(config.delimiter || DELIMITER);
 
          if(!fn)
          {
-            // handles special case where string is just a "/"
+            // handles special case where string is just a DELIMITER
             var referenceTokens=(pointer===delimiter ? [delimiter] : pointer.split(delimiter).map(unescapeReferenceToken));
             var evaluateToken=config.evaluateToken || evaluateReferenceToken;
 
             referenceTokens.length>0 && referenceTokens[0]==="" && referenceTokens.shift();
 
             // fn=(JSONPointer.cache[string]=JSONPointer.evaluateReferenceTokens.bind(null, components));
-            fn=evaluateReferenceTokens.bind(null, referenceTokens, evaluateToken);
+            fn=evaluateReferenceTokens.bind(null, referenceTokens, evaluateToken, config);
          }
 
          return fn;
@@ -182,7 +204,7 @@
       return Pointer;
    }
 
-   var JSONPointer=PointerFactory({delimiter:"/"});
+   var JSONPointer=PointerFactory();
 
    JSONPointer.Factory=PointerFactory;
 
