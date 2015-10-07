@@ -80,11 +80,7 @@
 
                      if(config.strict)
                      {
-                        console.log("THROWING!");
                         throw new ReferenceError("JSON Pointer '" + component + "' references nonexistent value");
-                     }
-                     else {
-                        console.log("NOT THROWING!");
                      }
                   }
                }
@@ -108,11 +104,7 @@
 
                   if(config.strict)
                   {
-                     console.log("THROWING!");
                      throw new ReferenceError("JSON Pointer '" + component + "' references nonexistent value");
-                  }
-                  else {
-                     console.log("NOT THROWING!");
                   }
                }
             }
