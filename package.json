@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://collinbrewer@bitbucket.org/collinbrewer/json-pointer.git"
+    "url": "https://github.com/collinbrewer/json-pointer.git"
   },
   "author": "Collin Brewer <collin@brewer-collective.com>",
   "license": "ISC",
