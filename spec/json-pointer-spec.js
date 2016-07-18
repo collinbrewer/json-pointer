@@ -1,7 +1,7 @@
 var chai=require("chai");
 var should=chai.should();
 var expect=chai.expect;
-var JSONPointer=require("../index.js");
+var JSONPointer=require("../src/json-pointer.js");
 
 // tests built from examples provided at: http://tools.ietf.org/html/rfc6901
 var doc={

@@ -2,9 +2,10 @@
   "name": "json-pointer",
   "version": "0.0.2",
   "description": "A utility for working with RFC 6901 pointers, and a bit more.",
-  "main": "index.js",
+  "main": "src/json-pointer.js",
   "scripts": {
-    "test": "mocha spec"
+    "test": "mocha spec",
+    "test:cov": "istanbul cover ./node_modules/mocha/bin/_mocha -R spec"
   },
   "repository": {
     "type": "git",
@@ -14,6 +15,7 @@
   "license": "ISC",
   "devDependencies": {
     "chai": "^3.5.0",
+    "istanbul": "^0.4.4",
     "mocha": "^2.2.5"
   }
 }
