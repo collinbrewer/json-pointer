@@ -3,204 +3,203 @@
 * A javascript implementation of the RFC 6901 Spec: http://tools.ietf.org/html/rfc6901
 */
 
-(function(root){
+var isArray = require('isarray');
 
-   var isArray=Array.isArray || function(obj){
-      return Object.prototype.toString.call(obj) == '[object Array]';
-   };
+function PointerFactory (config) {
+	config || (config = {});
 
-   function PointerFactory(config)
-   {
-      config || (config={});
+	var DELIMITER = config.delimiter || '/';
 
-      var DELIMITER=config.delimiter || "/";
-      var strict=config.strict || true;
+	/**
+	 * Encodes the special characters of a given component according
+	 * to the RFC 6901 Specification: http://tools.ietf.org/html/rfc6901#section-3
+	 * @param {String} component The component to encode
+	 * @return {String} The encoded component
+	 */
+	function escapeReferenceToken (component) { // eslint-disable-line
+		return component.replace(/~(?![0])/g, '~0').replace(/~(?![1])/, '~1');
+	}
 
-      /**
-       * Encodes the special characters of a given component according
-       * to the RFC 6901 Specification: http://tools.ietf.org/html/rfc6901#section-3
-       * @param {String} component The component to encode
-       * @return {String} The encoded component
-       */
-      function escapeReferenceToken(component)
-      {
-         return component.replace(/~(?![0])/g, "~0").replace(/~(?![1])/, "~1");
-      }
+	/**
+	 * Decodes the special characters of a given component according
+	 * to the RFC 6901 Specification: http://tools.ietf.org/html/rfc6901#section-3
+	 * @param {String} component The component to decode
+	 * @return {String} The decoded component
+	 */
+	function unescapeReferenceToken (component) {
+		return component.replace(/~1/g, '/').replace(/~0/g, '~');
+	}
 
-      /**
-       * Decodes the special characters of a given component according
-       * to the RFC 6901 Specification: http://tools.ietf.org/html/rfc6901#section-3
-       * @param {String} component The component to decode
-       * @return {String} The decoded component
-       */
-      function unescapeReferenceToken(component){
-         return component.replace(/~1/g, "/").replace(/~0/g, "~");
-      }
+	/**
+	 * Evaluates a single component against the given object
+	 * @param {String} component The pointer component to evaluate
+	 * @param {Boolean} strict Error should be thrown in case of a misisng reference
+	 * @param {Mixed} doc The document to evaluate the component against
+	 * @return {Mixed} The value resolved by evaluating the pointer against the given document
+	 */
+	function evaluateReferenceToken (component, config, doc) {
+		var debug = false;
 
-      /**
-       * Evaluates a single component against the given object
-       * @param {String} component The pointer component to evaluate
-       * @param {Boolean} strict Error should be thrown in case of a misisng reference
-       * @param {Mixed} doc The document to evaluate the component against
-       * @return {Mixed} The value resolved by evaluating the pointer against the given document
-       */
-      function evaluateReferenceToken(component, config, doc){
+		debug && console.group('evaluateReferenceToken', arguments);
 
-         var debug=false;
+		if (isArray(doc)) {
+			debug && console.log('isArray');
 
-         debug && console.group("evaluateReferenceToken", arguments);
+			if (component === '-') { // new or something
+				console.warn("JSON Pointer component '-' is not yet supported");
+			}
+			else {
+				var index = parseInt(component);
 
-         if(isArray(doc))
-         {
-            debug && console.log("isArray");
+				debug && console.log('	index: ', index);
 
-            if(component==="-") // new or something
-            {
-               console.warn("JSON Pointer component '-' is not yet supported");
-            }
-            else
-            {
-               var index=parseInt(component);
+				if (isNaN(index)) {
+					doc = config.defaultValue; // this will either be undefined or the defaultValue
 
-               debug && console.log("   index: ", index);
+					if (config.strict) {
+						throw new ReferenceError("JSON Pointer '" + component + "' references nonexistent value");
+					}
+				}
+				else {
+					if (index >= 0 && index < doc.length) {
+						doc = doc[index];
+					}
+					else {
+						doc = config.defaultValue; // this will either be undefined or the defaultValue
 
-               if(isNaN(index))
-               {
-                  throw new Error("Invalid JSON Pointer syntax: " + component);
-               }
-               else
-               {
-                  if(index>=0 && index<doc.length)
-                  {
-                     doc=doc[index];
-                  }
-                  else
-                  {
-                     doc=config.defaultValue; // this will either be undefined or the defaultValue
+						if (config.strict) {
+							throw new ReferenceError("JSON Pointer '" + component + "' references nonexistent value");
+						}
+					}
+				}
+			}
+		}
+		else {
+			debug && console.log('is not array');
 
-                     if(config.strict)
-                     {
-                        throw new ReferenceError("JSON Pointer '" + component + "' references nonexistent value");
-                     }
-                  }
-               }
-            }
-         }
-         else
-         {
-            debug && console.log("is not array");
+			if (component !== '') { // special case... no key evaluates to original doc
+				component === '/' && (component = '');
 
-            if(component!=="") // special case... no key evaluates to original doc
-            {
-               component==="/" && (component="");
+				if (component in doc) {
+					doc = doc[component];
+				}
+				else {
+					doc = config.defaultValue; // this will either be undefined or the defaultValue
 
-               if(component in doc)
-               {
-                  doc=doc[component];
-               }
-               else
-               {
-                  doc=config.defaultValue; // this will either be undefined or the defaultValue
+					if (config.strict) {
+						throw new ReferenceError("JSON Pointer '" + component + "' references nonexistent value");
+					}
+				}
+			}
+		}
 
-                  if(config.strict)
-                  {
-                     throw new ReferenceError("JSON Pointer '" + component + "' references nonexistent value");
-                  }
-               }
-            }
-         }
+		debug && console.groupEnd();
 
-         debug && console.groupEnd();
+		return doc;
+	}
 
-         return doc;
-      }
+	/**
+	 * Evaluates a list of components against the given root object
+	 * @param {Array} components The pointer component to evaluate
+	 * @param {Mixed} doc The document to evaluate the component against
+	 * @return {Mixed} The value resolved by evaluating the pointer against the given document
+	 */
+	function evaluateReferenceTokens (components, evaluateToken, config, doc) {
+		var index = 0;
+		var length = components.length;
 
-      /**
-       * Evaluates a list of components against the given root object
-       * @param {Array} components The pointer component to evaluate
-       * @param {Mixed} doc The document to evaluate the component against
-       * @return {Mixed} The value resolved by evaluating the pointer against the given document
-       */
-      function evaluateReferenceTokens(components, evaluateToken, config, doc){
+		if (length !== 0) {
+			while (doc && index < length) {
+				doc = evaluateToken(components[index], config, doc);
 
-         var index=0;
-         var length=components.length;
+				index++;
+			}
+		}
 
-         if(length!==0)
-         {
-            while(doc && index<length)
-            {
-               doc=evaluateToken(components[index], config, doc);
+		return doc;
+	}
 
-               index++;
-            }
-         }
+	/**
+	 * Builds a function that resolves the pointer for a given object
+	 * @param {String} The pointer string
+	 * @return {Function} A function that returns the evaluation of the given *string* against a given document root
+	 */
+	function compile (pointer, config) {
+		config || (config = {strict: true});
 
-         return doc;
-      }
+		var fn;// =(JSONPointer.cache || (JSONPointer.cache={}))[string];
+		var delimiter = (config.delimiter || DELIMITER);
 
-      /**
-       * Builds a function that resolves the pointer for a given object
-       * @param {String} The pointer string
-       * @return {Function} A function that returns the evaluation of the given *string* against a given document root
-       */
-      function compile(pointer, config){
+		if (!fn) {
+			// handles special case where string is just a DELIMITER
+			var referenceTokens = (pointer === delimiter ? [delimiter] : pointer.split(delimiter).map(unescapeReferenceToken));
+			var evaluateToken = config.evaluateToken || evaluateReferenceToken;
 
-         config || (config={strict:true});
+			referenceTokens.length > 0 && referenceTokens[0] === '' && referenceTokens.shift();
 
-         var fn;//=(JSONPointer.cache || (JSONPointer.cache={}))[string];
-         var delimiter=(config.delimiter || DELIMITER);
+			// fn=(JSONPointer.cache[string]=JSONPointer.evaluateReferenceTokens.bind(null, components));
+			fn = evaluateReferenceTokens.bind(null, referenceTokens, evaluateToken, config);
+		}
 
-         if(!fn)
-         {
-            // handles special case where string is just a DELIMITER
-            var referenceTokens=(pointer===delimiter ? [delimiter] : pointer.split(delimiter).map(unescapeReferenceToken));
-            var evaluateToken=config.evaluateToken || evaluateReferenceToken;
+		return fn;
+	}
 
-            referenceTokens.length>0 && referenceTokens[0]==="" && referenceTokens.shift();
+	/**
+	 * Evaluates the given document against the pointer according
+	 * to the RFC 6901 Specification: http://tools.ietf.org/html/rfc6901#section-4
+	 * @param {String} pointer The pointer string
+	 * @param {Mixed} doc The root document to evaluate the pointer against
+	 * @return {Mixed} The evaluation of the given *string* against a given document root
+	 */
+	function evaluate (representation, doc, config) {
+		return compile(representation, config)(doc);
+	}
 
-            // fn=(JSONPointer.cache[string]=JSONPointer.evaluateReferenceTokens.bind(null, components));
-            fn=evaluateReferenceTokens.bind(null, referenceTokens, evaluateToken, config);
-         }
+	function tokenizer (representation, config) {
+		config || (config = {strict: true});
+		var delimiter = (config.delimiter || DELIMITER);
 
-         return fn;
-      }
+		var referenceTokens;
 
-      /**
-       * Evaluates the given document against the pointer according
-       * to the RFC 6901 Specification: http://tools.ietf.org/html/rfc6901#section-4
-       * @param {String} pointer The pointer string
-       * @param {Mixed} doc The root document to evaluate the pointer against
-       * @return {Mixed} The evaluation of the given *string* against a given document root
-       */
-      function evaluate(representation, doc, config){
-         return compile(representation, config)(doc);
-      }
+		if (representation === '') {
+			referenceTokens = [];
+		}
+		else if (representation === delimiter) {
+			referenceTokens = [delimiter];
+		}
+		else {
+			referenceTokens = representation.substr(1).split(delimiter).map(unescapeReferenceToken);
+		}
 
-      /**
-       * @class Pointer
-       */
-      function Pointer(representation)
-      {
-         this.representation=representation;
-      }
+		return {
+			tokenize: function () { return referenceTokens; }
+		};
+	}
 
-      Pointer.evaluate=evaluate;
+	/**
+	 * @class Pointer
+	 */
+	function Pointer (representation) {
+		this.representation = representation;
+	}
 
-      Pointer.prototype.evaluate=function(doc){
-         return evaluate(this.representation, doc);
-      };
+	Pointer.evaluate = evaluate;
 
-      Pointer.Factory=PointerFactory;
+	Pointer.prototype.evaluate = function (doc) {
+		return evaluate(this.representation, doc);
+	};
 
-      return Pointer;
-   }
+	Pointer.prototype.tokenizer = function () {
+		return tokenizer(this.representation, this.config);
+	};
 
-   var JSONPointer=PointerFactory();
+	Pointer.Factory = PointerFactory;
 
-   JSONPointer.Factory=PointerFactory;
+	return Pointer;
+}
 
-   // expose
-   module.exports=JSONPointer;
+var JSONPointer = PointerFactory();
 
-})(this);
+JSONPointer.Factory = PointerFactory;
+
+module.exports = JSONPointer;
