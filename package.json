@@ -1,6 +1,6 @@
 {
   "name": "@collinbrewer/json-pointer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A utility for working with RFC 6901 pointers, and a bit more.",
   "main": "src/json-pointer.js",
   "scripts": {
