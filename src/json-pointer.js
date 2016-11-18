@@ -3,8 +3,6 @@
 * A javascript implementation of the RFC 6901 Spec: http://tools.ietf.org/html/rfc6901
 */
 
-var isArray = require('isarray');
-
 function PointerFactory (config) {
 	config || (config = {});
 
@@ -42,7 +40,7 @@ function PointerFactory (config) {
 
 		debug && console.group('evaluateReferenceToken', arguments);
 
-		if (isArray(doc)) {
+		if (Array.isArray(doc)) {
 			debug && console.log('isArray');
 
 			if (component === '-') { // new or something

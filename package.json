@@ -28,7 +28,5 @@
     "mocha": "^2.2.5",
     "publish": "^0.6.0"
   },
-  "dependencies": {
-    "isarray": "^2.0.1"
-  }
+  "dependencies": {}
 }
